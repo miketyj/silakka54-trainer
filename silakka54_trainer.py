@@ -78,7 +78,7 @@ MODE_DESCS = {
     1: "Nav layer — MO1 + hjkl=arrows, y/n=pgup/dn, u/o=home/end",
     2: "Symbols — MO2 + brackets ( ) [ ] { } operators = + - _",
     3: "Mixed — everything at once, base + symbols + nav hints",
-    4: "Key Flash — type the displayed key from any layer  [h]=hint  [f]=filter",
+    4: "Key Flash — type the displayed key  [h]=hint  [f]=filter  [r]=skip",
 }
 
 MODE_COLORS = {0: 7, 1: 4, 2: 3, 3: 5, 4: 1}  # white, cyan, yellow, magenta, green
@@ -130,28 +130,12 @@ KEY_CHALLENGES = [
     {'display': '~',  'name': 'Tilde',         'keys': [ord('~')],  'layer': 2, 'hint': 'MO2 + G'},
     {'display': '|',  'name': 'Pipe',          'keys': [ord('|')],  'layer': 2, 'hint': 'MO2 + V'},
     {'display': '\\', 'name': 'Backslash',     'keys': [ord('\\')], 'layer': 2, 'hint': 'MO2 + B'},
-    # ── L3 Function Keys (MO3 = left thumb inner) ─────────────────────────
-    # Left hand home row: A=M0, S=F1, D=F2, F=F3, G=F4
-    # Right hand home row: H=Vol-, J=Prev, K=F9, L=F10, ;=F11, '=F12
-    # Right hand top row:  Y=Vol+, U=Next, I=Play, O=PrtSc
-    # Right hand bot row:  N=F5, M=F6, ,=F7, .=F8, /=Gui
-    {'display': 'F1',  'name': 'F1',  'keys': [curses.KEY_F1],  'layer': 3, 'hint': 'MO3 + S'},
-    {'display': 'F2',  'name': 'F2',  'keys': [curses.KEY_F2],  'layer': 3, 'hint': 'MO3 + D'},
-    {'display': 'F3',  'name': 'F3',  'keys': [curses.KEY_F3],  'layer': 3, 'hint': 'MO3 + F'},
-    {'display': 'F4',  'name': 'F4',  'keys': [curses.KEY_F4],  'layer': 3, 'hint': 'MO3 + G'},
-    {'display': 'F5',  'name': 'F5',  'keys': [curses.KEY_F5],  'layer': 3, 'hint': 'MO3 + N'},
-    {'display': 'F6',  'name': 'F6',  'keys': [curses.KEY_F6],  'layer': 3, 'hint': 'MO3 + M'},
-    {'display': 'F7',  'name': 'F7',  'keys': [curses.KEY_F7],  'layer': 3, 'hint': 'MO3 + ,'},
-    {'display': 'F8',  'name': 'F8',  'keys': [curses.KEY_F8],  'layer': 3, 'hint': 'MO3 + .'},
-    {'display': 'F9',  'name': 'F9',  'keys': [curses.KEY_F9],  'layer': 3, 'hint': 'MO3 + K'},
-    {'display': 'F10', 'name': 'F10', 'keys': [curses.KEY_F10], 'layer': 3, 'hint': 'MO3 + L'},
-    {'display': 'F11', 'name': 'F11', 'keys': [curses.KEY_F11], 'layer': 3, 'hint': 'MO3 + ;'},
-    {'display': 'F12', 'name': 'F12', 'keys': [curses.KEY_F12], 'layer': 3, 'hint': "MO3 + '"},
+    # L3 (Fn/Media) keys are excluded — terminals intercept F-keys before the app sees them.
 ]
 
 LAYER_COLORS = {1: 4, 2: 3, 3: 5}   # L1=cyan, L2=yellow, L3=magenta
-FILTER_CYCLE = ['all', 'l1', 'l2', 'l3']
-FILTER_LABELS = {'all': 'All Layers', 'l1': 'L1 Nav only', 'l2': 'L2 Sym only', 'l3': 'L3 Fn only'}
+FILTER_CYCLE = ['all', 'l1', 'l2']
+FILTER_LABELS = {'all': 'All (L1+L2)', 'l1': 'L1 Nav only', 'l2': 'L2 Sym only'}
 
 
 def build_pool(filter_key):
@@ -241,7 +225,7 @@ def main(stdscr):
             mode = 4; state = new_state(mode)
         elif key == ord('\t'):  # Tab = next mode
             mode = (mode + 1) % 5; state = new_state(mode)
-        elif key == ord('r'):
+        elif key == ord('r') and mode != 4:
             state = new_state(mode)
         elif mode == 4:
             handle_key_flash(state, key)
@@ -356,6 +340,11 @@ def handle_key_flash(state, key):
     # h = show hint early
     if key == ord('h'):
         state['hint_shown'] = True
+        return
+
+    # r = skip to next challenge (no stat penalty)
+    if key == ord('r'):
+        advance_flash(state)
         return
 
     # f = cycle layer filter
@@ -664,7 +653,7 @@ def draw_key_flash(stdscr, state, h, w):
 
     # ── FOOTER ──
     footer_y = h - 1
-    controls = " [h]hint  [f]filter layer  [r]reset  [tab]mode  [1-5]mode  [q]quit "
+    controls = " [h]hint  [f]filter layer  [r]skip  [tab]mode  [1-5]mode  [q]quit "
     try:
         stdscr.addstr(footer_y, 0, controls[:w], curses.color_pair(7) | curses.A_DIM | curses.A_REVERSE)
     except curses.error:
